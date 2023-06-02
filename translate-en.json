@@ -1,4 +1,16 @@
 {
-  "MDX": "MDX",
-  "QUERY": "Query"
+  "TRANSACTIONLOGS": "Transaction Logs",
+  "MAXROWS": "Max. Rows",
+  "CLEAR": "Clear",
+  "SORT": "Sort",
+  "ID": "ID",
+  "CHANGESETID": "ChangeSetID",
+  "TIMESTAMP": "TimeStamp",
+  "REPLICATIONTIME": "ReplicationTime",
+  "USER": "User",
+  "CUBE": "Cube",
+  "ELEMENTS": "Elements",
+  "OLDVALUE": "OldValue",
+  "NEWVALUE": "NewValue",
+  "STATUSMESSAGE": "StatusMessage"
 }

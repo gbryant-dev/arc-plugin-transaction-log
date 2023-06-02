@@ -1,11 +1,330 @@
-<div>
-  <div class="row">
-    <div class="col-md-12">
-      <h2>
-        <i class="fa fa-paw" style="padding-right: 5px" aria-hidden="true"></i>
-        Template
-      </h2>
-      <h5>Can be used as a template to create new plugins</h5>
+<div class="tm1-server-log">
+  <div class="toolbar" ng-if="message">
+    <div class="btn-toolbar pull-right">
+      <button class="btn btn-warning">
+        <span class="fa fa-warning" aria-hidden="true"></span>
+        <span>{{message}}</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header pt-1 pb-1 px-3">
+      <span>
+        <i class="fa fa-list"></i> <span translate="TRANSACTIONLOGS"></span>
+      </span>
+      <div class="pull-right">
+        <div class="input-group">
+          <span ng-if="loading" class="p-1">
+            <i class="fa fa-refresh fa-spin fa-fw"></i>
+          </span>
+          <span class="input-group-prepend">
+            <button
+              class="btn btn-secondary btn-sm"
+              ng-class="{'btn-light': isPaused}"
+              title="{{'PAUSE' | translate}}"
+              ng-click="togglePaused()"
+            >
+              <i class="fa fa-fw fa-pause" ng-if="!isPaused"></i>
+              <i class="fa fa-fw fa-play" ng-if="isPaused"></i>
+            </button>
+          </span>
+          <input
+            type="text"
+            ng-model="selections.cube"
+            placeholder="{{'CUBE' | translate}}"
+            class="form-control form-control-sm"
+            spellcheck="false"
+            autocomplete="off"
+          />
+          <span class="input-group-append mr-1">
+            <button
+              ng-disabled="!selections.cube.length"
+              class="btn btn-secondary btn-sm click"
+              title="{{'CLEAR' | translate}}"
+              ng-click="selections.cube = ''"
+            >
+              <i class="fa fa-fw fa-remove"></i>
+            </button>
+          </span>
+
+          <input
+            type="text"
+            ng-model="selections.user"
+            placeholder="{{'USER' | translate}}"
+            class="form-control form-control-sm"
+            spellcheck="false"
+            autocomplete="off"
+          />
+          <span class="input-group-append">
+            <button
+              ng-disabled="!selections.user.length"
+              class="btn btn-secondary btn-sm click"
+              title="{{'CLEAR' | translate}}"
+              ng-click="selections.user = ''"
+            >
+              <i class="fa fa-fw fa-remove"></i>
+            </button>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <auto-height class="p-1">
+        <table class="table table-sm table-th-nowrap">
+          <thead>
+            <tr style="user-select: none">
+              <th style="width: 30px">
+                <span
+                  ng-click="toggleSortOrder(0)"
+                  class="click"
+                  title="{{'SORT' | translate}}"
+                >
+                  <span translate="ID"></span>
+                  <i
+                    ng-if="!pageColumns[0].reverse && !pageColumns[0].isActive"
+                    class="{{pageColumns[0].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="!pageColumns[0].reverse && pageColumns[0].isActive"
+                    ng-class="{'text-primary':pageColumns[0].isActive}"
+                    class="{{pageColumns[0].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="pageColumns[0].reverse && pageColumns[0].isActive"
+                    ng-class="{'text-primary':pageColumns[0].isActive}"
+                    class="{{pageColumns[0].icons[1]}}"
+                  ></i>
+                </span>
+              </th>
+              <th>
+                <span
+                  ng-click="toggleSortOrder(1)"
+                  class="click"
+                  title="{{'SORT' | translate}}"
+                >
+                  <span translate="CHANGESETID"></span>
+                  <i
+                    ng-if="!pageColumns[1].reverse && !pageColumns[1].isActive"
+                    class="{{pageColumns[1].icons[1]}}"
+                  ></i>
+                  <i
+                    ng-if="!pageColumns[1].reverse && pageColumns[1].isActive"
+                    ng-class="{'text-primary':pageColumns[1].isActive}"
+                    class="{{pageColumns[1].icons[1]}}"
+                  ></i>
+                  <i
+                    ng-if="pageColumns[1].reverse && pageColumns[1].isActive"
+                    ng-class="{'text-primary':pageColumns[1].isActive}"
+                    class="{{pageColumns[1].icons[1]}}"
+                  ></i>
+                </span>
+              </th>
+              <th>
+                <span
+                  ng-click="toggleSortOrder(2)"
+                  class="click"
+                  title="{{'SORT' | translate}}"
+                >
+                  <span translate="TIMESTAMP"></span>
+                  <i
+                    ng-if="!pageColumns[2].reverse && !pageColumns[2].isActive"
+                    class="{{pageColumns[2].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="!pageColumns[2].reverse && pageColumns[2].isActive"
+                    ng-class="{'text-primary':pageColumns[2].isActive}"
+                    class="{{pageColumns[2].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="pageColumns[2].reverse && pageColumns[2].isActive"
+                    ng-class="{'text-primary':pageColumns[2].isActive}"
+                    class="{{pageColumns[2].icons[1]}}"
+                  ></i>
+                </span>
+              </th>
+              <th>
+                <span
+                  ng-click="toggleSortOrder(3)"
+                  class="click"
+                  title="{{'SORT' | translate}}"
+                >
+                  <span translate="REPLICATIONTIME"></span>
+                  <i
+                    ng-if="!pageColumns[3].reverse && !pageColumns[3].isActive"
+                    class="{{pageColumns[3].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="!pageColumns[3].reverse && pageColumns[3].isActive"
+                    ng-class="{'text-primary':pageColumns[3].isActive}"
+                    class="{{pageColumns[3].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="pageColumns[3].reverse && pageColumns[3].isActive"
+                    ng-class="{'text-primary':pageColumns[3].isActive}"
+                    class="{{pageColumns[3].icons[1]}}"
+                  ></i>
+                </span>
+              </th>
+              <th>
+                <span
+                  ng-click="toggleSortOrder(4)"
+                  class="click"
+                  title="{{'SORT' | translate}}"
+                >
+                  <span translate="USER"></span>
+                  <i
+                    ng-if="!pageColumns[4].reverse && !pageColumns[4].isActive"
+                    class="{{pageColumns[4].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="!pageColumns[4].reverse && pageColumns[4].isActive"
+                    ng-class="{'text-primary':pageColumns[4].isActive}"
+                    class="{{pageColumns[4].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="pageColumns[4].reverse && pageColumns[4].isActive"
+                    ng-class="{'text-primary':pageColumns[4].isActive}"
+                    class="{{pageColumns[4].icons[1]}}"
+                  ></i>
+                </span>
+              </th>
+              <th>
+                <span
+                  ng-click="toggleSortOrder(5)"
+                  class="click"
+                  title="{{'SORT' | translate}}"
+                >
+                  <span translate="CUBE"></span>
+                  <i
+                    ng-if="!pageColumns[5].reverse && !pageColumns[5].isActive"
+                    class="{{pageColumns[5].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="!pageColumns[5].reverse && pageColumns[5].isActive"
+                    ng-class="{'text-primary':pageColumns[5].isActive}"
+                    class="{{pageColumns[5].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="pageColumns[5].reverse && pageColumns[5].isActive"
+                    ng-class="{'text-primary':pageColumns[5].isActive}"
+                    class="{{pageColumns[5].icons[1]}}"
+                  ></i>
+                </span>
+              </th>
+              <th>
+                <span
+                  ng-click="toggleSortOrder(6)"
+                  class="click"
+                  title="{{'SORT' | translate}}"
+                >
+                  <span translate="ELEMENTS"></span>
+                  <i
+                    ng-if="!pageColumns[6].reverse && !pageColumns[6].isActive"
+                    class="{{pageColumns[6].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="!pageColumns[6].reverse && pageColumns[6].isActive"
+                    ng-class="{'text-primary':pageColumns[6].isActive}"
+                    class="{{pageColumns[6].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="pageColumns[6].reverse && pageColumns[6].isActive"
+                    ng-class="{'text-primary':pageColumns[6].isActive}"
+                    class="{{pageColumns[6].icons[1]}}"
+                  ></i>
+                </span>
+              </th>
+              <th>
+                <span
+                  ng-click="toggleSortOrder(7)"
+                  class="click"
+                  title="{{'SORT' | translate}}"
+                >
+                  <span translate="OLDVALUE"></span>
+                  <i
+                    ng-if="!pageColumns[7].reverse && !pageColumns[7].isActive"
+                    class="{{pageColumns[7].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="!pageColumns[7].reverse && pageColumns[7].isActive"
+                    ng-class="{'text-primary':pageColumns[7].isActive}"
+                    class="{{pageColumns[7].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="pageColumns[7].reverse && pageColumns[7].isActive"
+                    ng-class="{'text-primary':pageColumns[7].isActive}"
+                    class="{{pageColumns[7].icons[1]}}"
+                  ></i>
+                </span>
+              </th>
+              <th>
+                <span
+                  ng-click="toggleSortOrder(8)"
+                  class="click"
+                  title="{{'SORT' | translate}}"
+                >
+                  <span translate="NEWVALUE"></span>
+                  <i
+                    ng-if="!pageColumns[8].reverse && !pageColumns[8].isActive"
+                    class="{{pageColumns[8].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="!pageColumns[8].reverse && pageColumns[8].isActive"
+                    ng-class="{'text-primary':pageColumns[8].isActive}"
+                    class="{{pageColumns[8].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="pageColumns[8].reverse && pageColumns[8].isActive"
+                    ng-class="{'text-primary':pageColumns[8].isActive}"
+                    class="{{pageColumns[8].icons[1]}}"
+                  ></i>
+                </span>
+              </th>
+              <th>
+                <span
+                  ng-click="toggleSortOrder(9)"
+                  class="click"
+                  title="{{'SORT' | translate}}"
+                >
+                  <span translate="STATUSMESSAGE"></span>
+                  <i
+                    ng-if="!pageColumns[9].reverse && !pageColumns[9].isActive"
+                    class="{{pageColumns[9].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="!pageColumns[9].reverse && pageColumns[9].isActive"
+                    ng-class="{'text-primary':pageColumns[9].isActive}"
+                    class="{{pageColumns[9].icons[0]}}"
+                  ></i>
+                  <i
+                    ng-if="pageColumns[9].reverse && pageColumns[9].isActive"
+                    ng-class="{'text-primary':pageColumns[9].isActive}"
+                    class="{{pageColumns[9].icons[1]}}"
+                  ></i>
+                </span>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              ng-repeat="item in logs | filter:logFilter | limitTo:uiLimit track by item.ID"
+              class="alert"
+            >
+              <td style="width: 30px">{{item.ID}}</td>
+              <td>{{item.ChangeSetID}}</td>
+              <td>{{item.TimeStamp | date: 'yyyy-MM-dd HH:mm:ss'}}</td>
+              <td>{{item.ReplicationTime | date: 'yyyy-MM-dd HH:mm:ss'}}</td>
+              <td>{{item.User}}</td>
+              <td>{{item.Cube}}</td>
+              <td>{{item.Elements}}</td>
+              <td>{{item.OldValue}}</td>
+              <td>{{item.NewValue}}</td>
+              <td>{{item.StatusMessage}}</td>
+            </tr>
+          </tbody>
+        </table>
+      </auto-height>
     </div>
   </div>
 </div>
