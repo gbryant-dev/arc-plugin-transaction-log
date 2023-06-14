@@ -29,13 +29,11 @@ arc.directive('arcTransactionLogs', function () {
         var loadTimeout
         $scope.isPaused = false
         $scope.activeOnly = false
-        $scope.selections = {
-          cube: '',
-          user: ''
-        }
         $scope.message = ''
         $scope.logs = []
         $scope.delta = null
+        $scope.filters = []
+        $scope.filterString = ''
 
         if (!$rootScope.uiPrefs.transactionLogInterval) {
           $rootScope.uiPrefs.transactionLogInterval = 1000
@@ -43,8 +41,6 @@ arc.directive('arcTransactionLogs', function () {
         if (!$rootScope.uiPrefs.transactionLogMaxRows) {
           $rootScope.uiPrefs.transactionLogMaxRows = 1000
         }
-
-        $scope.uiLimit = $rootScope.uiPrefs.transactionLogMaxRows
 
         function beforeSendTrackChanges(request) {
           request.setRequestHeader('Prefer', 'odata.track-changes')
@@ -68,9 +64,8 @@ arc.directive('arcTransactionLogs', function () {
           $scope.delta = data['@odata.deltaLink']
           if (data.value.length) {
             _.each(data.value, function (log) {
-              log.Elements = ''
               if (log.Tuple !== null) {
-                log.Elements = log.Tuple.join(', ')
+                log.Tuple = log.Tuple.join(', ')
               }
               $scope.logs.unshift(log)
               if (
@@ -81,6 +76,9 @@ arc.directive('arcTransactionLogs', function () {
             })
           }
           if (!$scope.isPaused) {
+            if (loadTimeout) {
+              clearTimeout(loadTimeout)
+            }
             loadTimeout = setTimeout(function () {
               load()
             }, $rootScope.uiPrefs.transactionLogInterval)
@@ -92,9 +90,180 @@ arc.directive('arcTransactionLogs', function () {
           clear()
         }
 
+        $scope.numericOrDateOperators = {
+          '=': { value: 'eq' },
+          '>': { value: 'gt' },
+          '>=': { value: 'ge' },
+          '<': { value: 'lt' },
+          '<=': { value: 'le' },
+          '<>': { value: 'ne' }
+        }
+
+        $scope.stringOperators = {
+          '=': { value: 'eq' },
+          '<>': { value: 'ne' },
+          startswith: {
+            value: 'startswith',
+            signature: 'startswith($1, $2)'
+          },
+          contains: {
+            value: 'contains',
+            signature: 'contains($1, $2)'
+          }
+        }
+
+        $scope.collectionOperators = {
+          any: {
+            value: 'any',
+            signature: '$1/any (t: t eq $2)'
+          }
+        }
+
+        $scope.transactionFilterColumns = {
+          ID: {
+            type: 'numeric',
+            filterable: true,
+            operators: $scope.numericOrDateOperators
+          },
+          ChangeSetID: {
+            type: 'string',
+            filterable: true,
+            operators: $scope.stringOperators
+          },
+          TimeStamp: {
+            type: 'date',
+            filterable: true,
+            functions: ['date', 'year', 'month', 'day'],
+            operators: $scope.numericOrDateOperators
+          },
+          ReplicationTime: {
+            type: 'date'
+          },
+          User: {
+            type: 'string',
+            filterable: true,
+            operators: $scope.stringOperators
+          },
+          Cube: {
+            type: 'string',
+            filterable: true,
+            operators: $scope.stringOperators
+          },
+          Tuple: {
+            type: 'string',
+            filterable: true,
+            operators: $scope.collectionOperators
+          },
+          OldValue: {
+            type: 'string',
+            filterable: true,
+            operators: {
+              ...$scope.stringOperators,
+              ...$scope.numericOrDateOperators
+            }
+          },
+          NewValue: {
+            type: 'string',
+            filterable: true,
+            operators: {
+              ...$scope.stringOperators,
+              ...$scope.numericOrDateOperators
+            }
+          },
+          StatusMessage: {
+            type: 'string'
+          }
+        }
+
+        $scope.getOperatorsForField = function (field) {
+          if (field === '') return {}
+          var operators = $scope.transactionFilterColumns[field.key].operators
+          return operators
+        }
+
+        var transactionLogPageColumns = [
+          {
+            name: 'ID',
+            type: 'numeric'
+          },
+          {
+            name: 'ChangeSetID',
+            type: 'alpha'
+          },
+          {
+            name: 'TimeStamp',
+            type: 'alpha'
+          },
+          {
+            name: 'ReplicationTime',
+            type: 'alpha'
+          },
+          {
+            name: 'User',
+            type: 'alpha'
+          },
+          {
+            name: 'Cube',
+            type: 'alpha'
+          },
+          {
+            name: 'Tuple',
+            type: 'alpha'
+          },
+          {
+            name: 'OldValue',
+            type: 'alpha'
+          },
+          {
+            name: 'NewValue',
+            type: 'alpha'
+          },
+          {
+            name: 'StatusMessage',
+            type: 'alpha'
+          }
+        ]
+
+        var replacePlaceholders = function (str) {
+          var args = Array.prototype.slice.call(arguments, 1)
+          return str.replace(/\$(\d+)/g, function (_, index) {
+            var argIndex = parseInt(index) - 1
+            return args[argIndex] !== undefined ? args[argIndex] : ''
+          })
+        }
+
+        var buildFilterString = function () {
+          var filters = _.chain($scope.filters)
+            .filter(function (f) {
+              return f.locked
+            })
+            .map(function (v) {
+              var filterValue =
+                $scope.transactionFilterColumns[v.field.key].type === 'string'
+                  ? `'${v.value}'`
+                  : v.value
+              var field = v.field.isFunction ? v.field.name : v.field.key
+              return v.operator.signature
+                ? `${replacePlaceholders(
+                    v.operator.signature,
+                    field,
+                    filterValue
+                  )}`
+                : `${field} ${v.operator.value} ${filterValue}`
+            })
+            .join(' and ')
+            .value()
+
+          return filters ? '&$filter=' + filters : ''
+        }
+
+        var updateFilterString = function () {
+          $scope.filterString = buildFilterString()
+        }
+
         var initialLoad = function () {
           $scope.logs = []
-          var url = '/TransactionLog()?$count=true&$top=0'
+          var url = '/TransactionLog()?$count=true&$top=0' + $scope.filterString
           $.ajax({
             type: 'GET',
             url: encodeURIComponent($scope.instance) + url,
@@ -106,7 +275,7 @@ arc.directive('arcTransactionLogs', function () {
                 count - $rootScope.uiPrefs.transactionLogMaxRows,
                 0
               )
-              url = '/TransactionLog()?$skip=' + skip
+              url = '/TransactionLog()?$skip=' + skip + $scope.filterString
               $.ajax({
                 type: 'GET',
                 url: encodeURIComponent($scope.instance) + url,
@@ -141,6 +310,7 @@ arc.directive('arcTransactionLogs', function () {
             }
           )
         }
+
         var load = function (loading) {
           $scope.loading = loading
           if (!$scope.delta) {
@@ -151,57 +321,13 @@ arc.directive('arcTransactionLogs', function () {
         }
 
         load(true)
+
         $scope.togglePaused = function () {
           $scope.isPaused = !$scope.isPaused
           if (!$scope.isPaused) {
             load()
           }
         }
-
-        var transactionLogPageColumns = [
-          {
-            name: 'ID',
-            type: 'numeric'
-          },
-          {
-            name: 'ChangeSetID',
-            type: 'alpha'
-          },
-          {
-            name: 'TimeStamp',
-            type: 'alpha'
-          },
-          {
-            name: 'ReplicationTime',
-            type: 'alpha'
-          },
-          {
-            name: 'User',
-            type: 'alpha',
-            filterable: true
-          },
-          {
-            name: 'Cube',
-            type: 'alpha',
-            filterable: true
-          },
-          {
-            name: 'Elements',
-            type: 'alpha'
-          },
-          {
-            name: 'OldValue',
-            type: 'alpha'
-          },
-          {
-            name: 'NewValue',
-            type: 'alpha'
-          },
-          {
-            name: 'StatusMessage',
-            type: 'alpha'
-          }
-        ]
 
         $scope.previousIndex = null
         $scope.pageColumns = $helper.createColumnSortGrid(
@@ -224,50 +350,68 @@ arc.directive('arcTransactionLogs', function () {
           $scope.previousIndex = _.clone(currentIndex)
         }
 
-        var toLowerCaseUnlessNull = function (input) {
-          if (input) {
-            return input.toLowerCase()
-          } else {
-            return ''
-          }
-        }
-
-        $scope.logFilter = function (item) {
-          if (
-            !$scope.selections.cube.length &&
-            !$scope.selections.user.length
-          ) {
-            return true
-          }
-          var cubeFilter = toLowerCaseUnlessNull($scope.selections.cube)
-          var userFilter = toLowerCaseUnlessNull($scope.selections.user)
-
-          if (
-            toLowerCaseUnlessNull(item.Cube).indexOf(cubeFilter) !== -1 &&
-            toLowerCaseUnlessNull(item.User).indexOf(userFilter) !== -1
-          ) {
-            return true
-          }
-
-          return false
-        }
-
-        $scope.filterableFields = _.chain(transactionLogPageColumns)
-          .filter(function (f) {
-            return f.filterable
+        $scope.filterableFields = _($scope.transactionFilterColumns)
+          .pickBy(function (value, key) {
+            return value.filterable
           })
-          .map('name')
+          .mapValues(function (value, key) {
+            if (value.functions && value.functions.length) {
+              return [{ name: key, key: key, isFunction: false }].concat(
+                _.map(value.functions, function (func) {
+                  return { name: `${func}(${key})`, key: key, isFunction: true }
+                })
+              )
+            } else {
+              return { name: key, key: key, isFunction: false }
+            }
+          })
+          .flatMap()
           .value()
 
-        $scope.filters = [] // Array to store filters
-
         $scope.addFilter = function () {
-          $scope.filters.push({ field: '', value: '' })
+          $scope.filters.push({
+            field: '',
+            operator: 'eq',
+            value: '',
+            locked: false
+          })
         }
 
         $scope.removeFilter = function (index) {
           $scope.filters.splice(index, 1)
         }
+
+        $scope.lockFilter = function (index) {
+          $scope.filters[index].locked = true
+        }
+
+        $scope.unlockFilter = function (index) {
+          $scope.filters[index].locked = false
+        }
+
+        $scope.clearFilters = function () {
+          $scope.filters = []
+          updateFilterString()
+        }
+
+        $scope.applyFilters = function () {
+          $scope.filters = _.filter($scope.filters, function (f) {
+            return f.locked
+          })
+          updateFilterString()
+        }
+
+        // Refetch logs again if filters have changed
+        $scope.$watch(
+          'filterString',
+          function (newFilterString, oldFilterString) {
+            if (newFilterString !== oldFilterString) {
+              clear()
+              load(true)
+            }
+          },
+          true
+        )
 
         //Trigger an event after the login screen
         $scope.$on('login-reload', function (event, args) {

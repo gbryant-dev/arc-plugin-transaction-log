@@ -7,65 +7,121 @@
       </button>
     </div>
   </div>
-
+  <div class="card mb-1">
+    <div class="card-header pt-1 pb-1 px-3">
+      <span>
+        <i class="fa fa-list"></i> <span translate="LOGFILTERS"></span>
+      </span>
+      <div class="pull-right">
+        <button
+          ng-click="addFilter()"
+          class="position-relative btn btn-secondary btn-sm"
+          title="{{ 'ADDFILTERS' | translate }}"
+        >
+          <i class="fa fa-filter"></i>
+          <i class="fa fa-plus fa-mark text-success"></i>
+        </button>
+        <button
+          ng-click="clearFilters()"
+          class="position-relative btn btn-secondary btn-sm"
+          title="{{ 'CLEARFILTERS' | translate }}"
+        >
+          <i class="fa fa-filter"></i>
+          <i class="fa fa-remove fa-mark text-danger"></i>
+        </button>
+      </div>
+    </div>
+    <div ng-if="filters.length > 0 || filterString !== ''" class="card-body">
+      <div ng-repeat="filter in filters" class="filter-row row mb-1">
+        <div class="col-md-4">
+          <select
+            ng-model="filter.field"
+            ng-options="field.name for field in filterableFields"
+            class="form-control"
+            ng-disabled="filter.locked"
+          ></select>
+        </div>
+        <div class="col-md-2">
+          <select
+            ng-model="filter.operator"
+            ng-options="value as key for (key, value) in getOperatorsForField(filter.field)"
+            class="form-control"
+            ng-disabled="filter.locked || filter.field === ''"
+          ></select>
+        </div>
+        <div class="col-md-4">
+          <input
+            type="text"
+            ng-model="filter.value"
+            placeholder="{{ 'FILTERVALUE' | translate }}"
+            class="form-control"
+            ng-disabled="filter.locked"
+          />
+        </div>
+        <div class="col-md-2">
+          <button
+            ng-if="filter.locked"
+            ng-click="unlockFilter($index)"
+            class="btn btn-light"
+          >
+            <i class="fa fa-unlock"></i>
+          </button>
+          <button
+            ng-if="!filter.locked"
+            ng-disabled="filter.field === '' || filter.operator === ''"
+            ng-click="lockFilter($index)"
+            class="btn btn-light"
+          >
+            <i class="fa fa-check text-success"></i>
+          </button>
+          <button
+            ng-if="!filter.locked"
+            ng-click="removeFilter($index)"
+            class="btn btn-light"
+          >
+            <i class="fa fa-trash text-danger"></i>
+          </button>
+        </div>
+      </div>
+      <div class="pull-right mt-4 mb-1">
+        <button
+          class="btn btn-success"
+          translate="APPLYFILTERS"
+          ng-click="applyFilters()"
+        ></button>
+      </div>
+    </div>
+  </div>
   <div class="card">
     <div class="card-header pt-1 pb-1 px-3">
       <span>
         <i class="fa fa-list"></i> <span translate="TRANSACTIONLOGS"></span>
       </span>
       <div class="pull-right">
-        <div class="input-group">
+        <div class="input-group input-group-sm button-group">
           <span ng-if="loading" class="p-1">
             <i class="fa fa-refresh fa-spin fa-fw"></i>
           </span>
+          <button
+            class="btn btn-secondary btn-sm mr-2"
+            ng-class="{'btn-light': isPaused}"
+            title="{{'PAUSE' | translate}}"
+            ng-click="togglePaused()"
+          >
+            <i class="fa fa-fw fa-pause" ng-if="!isPaused"></i>
+            <i class="fa fa-fw fa-play" ng-if="isPaused"></i>
+          </button>
           <span class="input-group-prepend">
-            <button
-              class="btn btn-secondary btn-sm"
-              ng-class="{'btn-light': isPaused}"
-              title="{{'PAUSE' | translate}}"
-              ng-click="togglePaused()"
-            >
-              <i class="fa fa-fw fa-pause" ng-if="!isPaused"></i>
-              <i class="fa fa-fw fa-play" ng-if="isPaused"></i>
-            </button>
+            <span class="input-group-text">
+              <span translate="MAXROWS"></span>
+            </span>
           </span>
           <input
-            type="text"
-            ng-model="selections.cube"
-            placeholder="{{'CUBE' | translate}}"
-            class="form-control form-control-sm"
-            spellcheck="false"
-            autocomplete="off"
+            type="number"
+            class="form-control"
+            ng-model="$root.uiPrefs.transactionLogMaxRows"
+            placeholder="{{ 'MAXROWS' | translate }}"
           />
-          <span class="input-group-append mr-1">
-            <button
-              ng-disabled="!selections.cube.length"
-              class="btn btn-secondary btn-sm click"
-              title="{{'CLEAR' | translate}}"
-              ng-click="selections.cube = ''"
-            >
-              <i class="fa fa-fw fa-remove"></i>
-            </button>
-          </span>
-
-          <input
-            type="text"
-            ng-model="selections.user"
-            placeholder="{{'USER' | translate}}"
-            class="form-control form-control-sm"
-            spellcheck="false"
-            autocomplete="off"
-          />
-          <span class="input-group-append">
-            <button
-              ng-disabled="!selections.user.length"
-              class="btn btn-secondary btn-sm click"
-              title="{{'CLEAR' | translate}}"
-              ng-click="selections.user = ''"
-            >
-              <i class="fa fa-fw fa-remove"></i>
-            </button>
-          </span>
         </div>
       </div>
     </div>
@@ -218,7 +274,7 @@
                   class="click"
                   title="{{'SORT' | translate}}"
                 >
-                  <span translate="ELEMENTS"></span>
+                  <span translate="TUPLE"></span>
                   <i
                     ng-if="!pageColumns[6].reverse && !pageColumns[6].isActive"
                     class="{{pageColumns[6].icons[0]}}"
@@ -308,7 +364,7 @@
           </thead>
           <tbody>
             <tr
-              ng-repeat="item in logs | filter:logFilter | limitTo:uiLimit track by item.ID"
+              ng-repeat="item in logs | limitTo:$root.uiPrefs.transactionLogMaxRows track by item.ID"
               class="alert"
             >
               <td style="width: 30px">{{item.ID}}</td>
@@ -317,7 +373,7 @@
               <td>{{item.ReplicationTime | date: 'yyyy-MM-dd HH:mm:ss'}}</td>
               <td>{{item.User}}</td>
               <td>{{item.Cube}}</td>
-              <td>{{item.Elements}}</td>
+              <td>{{item.Tuple}}</td>
               <td>{{item.OldValue}}</td>
               <td>{{item.NewValue}}</td>
               <td>{{item.StatusMessage}}</td>
